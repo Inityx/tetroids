@@ -42,4 +42,8 @@ pub mod template {
 
     pub const SQUARE: Piece = Piece { offsets: [C(0,0), C(0,1), C(1,0), C(1, 1)], color: YELLOW, coord: C(0,0) };
     pub const TEE:    Piece = Piece { offsets: [C(0,0), C(0,1), C(1,0), C(0,-1)], color: PURPLE, coord: C(0,0) };
+
+    pub fn random_at(coord: C) -> Piece {
+        Piece::from_preset(&SQUARE, coord)
+    }
 }

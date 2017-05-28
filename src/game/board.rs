@@ -2,10 +2,15 @@
 
 use super::color::Color;
 use super::piece::Piece;
+use super::aux::Coord;
 
-const BOARD_WIDTH: usize = 10;
-const BOARD_HEIGHT: usize = 20;
-const BOARD_BORDER: &str = "+--------------------+";
+pub const BOARD_WIDTH: usize = 10;
+pub const BOARD_HEIGHT: usize = 20;
+pub const BOARD_BORDER: &str = "+--------------------+";
+pub const INSERTION_POINT: Coord = Coord(
+    (BOARD_WIDTH as i8) / 2 - 1,
+    (BOARD_HEIGHT as i8) - 1
+);
 
 #[derive(Debug, Copy, Clone)]
 pub struct BoardSquare(Color);
@@ -21,19 +26,21 @@ impl Board {
         }
     }
 
-    fn set(&mut self, row: usize, col: usize, board_square: BoardSquare) {
-        self.data[row][col] = Some(board_square);
+    fn set(&mut self, x: usize, y: usize, board_square: BoardSquare) {
+        self.data[y][x] = Some(board_square);
     }
 
-    pub fn get(&self, row: usize, col: usize) -> Option<BoardSquare> {
-        self.data[row][col]
+    pub fn get(&self, x: usize, y: usize) -> Option<BoardSquare> {
+        self.data[y][x]
     }
 
-    pub fn place(&mut self, piece: Piece) {
+    pub fn place(&mut self, piece: &Piece) {
         for square_offset in piece.offsets.iter() {
+            let location = square_offset + piece.coord;
+            
             self.set(
-                (square_offset.0 + piece.coord.0) as usize,
-                (square_offset.1 + piece.coord.1) as usize,
+                location.0 as usize,
+                location.1 as usize,
                 BoardSquare(piece.color)
             );
         }
@@ -47,7 +54,7 @@ impl Board {
     pub fn print(&self) {
         println!("{}", BOARD_BORDER);
 
-        for row in self.data.iter() {
+        for row in self.data.iter().rev() {
             let row_string = row.iter().map( |square|
                 match square {
                     &Some(_) => "##",
@@ -61,4 +68,3 @@ impl Board {
         println!("{}", BOARD_BORDER);
     }
 }
-

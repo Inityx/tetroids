@@ -1,6 +1,6 @@
 mod game;
 
 fn main() {
-    let g = game::Game::new();
-    g.print();
+    let mut g = game::Game::new();
+    g.play();
 }

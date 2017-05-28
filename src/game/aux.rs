@@ -14,10 +14,10 @@ impl ops::Add for Coord {
     }
 }
 
-impl<'a, 'b> ops::Add<&'b Coord> for &'a Coord {
+impl<'a> ops::Add<Coord> for &'a Coord {
     type Output = Coord;
 
-    fn add(self, rhs: &'b Coord) -> Coord {
+    fn add(self, rhs: Coord) -> Coord {
         Coord(
             self.0 + rhs.0,
             self.1 + rhs.1
