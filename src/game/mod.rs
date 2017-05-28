@@ -28,8 +28,8 @@ impl Game {
 
     fn can_sink_piece(&mut self) -> bool {
         if let Some(ref cursor) = self.cursor {
-            cursor.offsets.iter().cloned()
-                .map( |offset| offset + cursor.coord )
+            cursor.offsets.iter()
+                .map( |offset| offset + &cursor.coord )
                 .all( |location|
                     self.board.get(
                         location.0 as usize,
