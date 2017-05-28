@@ -34,7 +34,8 @@ impl Game {
                     self.board.get(
                         location.0 as usize,
                         location.1 as usize
-                    ).is_none()
+                    ).is_none() &&
+                    location.1 >= 0
                 )
         } else {
             false
