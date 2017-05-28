@@ -26,7 +26,7 @@ impl Game {
         self.board.print();
     }
 
-    fn can_sink_piece(&mut self) -> bool {
+    fn can_sink_piece(&self) -> bool {
         if let Some(ref cursor) = self.cursor {
             cursor.offsets.iter()
                 .map( |offset| offset + &cursor.coord )
