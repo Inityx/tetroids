@@ -8,7 +8,7 @@ const BOARD_HEIGHT: usize = 20;
 const BOARD_BORDER: &str = "+--------------------+";
 
 #[derive(Debug, Copy, Clone)]
-struct BoardSquare(Color);
+pub struct BoardSquare(Color);
 
 pub struct Board {
     data: [[Option<BoardSquare>; BOARD_WIDTH]; BOARD_HEIGHT],
@@ -25,14 +25,23 @@ impl Board {
         self.data[row][col] = Some(board_square);
     }
 
+    pub fn get(&self, row: usize, col: usize) -> Option<BoardSquare> {
+        self.data[row][col]
+    }
+
     pub fn place(&mut self, piece: Piece) {
         for square_offset in piece.offsets.iter() {
             self.set(
-                (square_offset.0 as isize + piece.coord.0 as isize) as usize,
-                (square_offset.1 as isize + piece.coord.1 as isize) as usize,
+                (square_offset.0 + piece.coord.0) as usize,
+                (square_offset.1 + piece.coord.1) as usize,
                 BoardSquare(piece.color)
             );
         }
+    }
+    
+    pub fn clear_lines(&mut self) -> u8 {
+        // clear full lines and return number of lines cleared
+        0
     }
 
     pub fn print(&self) {

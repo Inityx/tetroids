@@ -4,13 +4,13 @@ use super::aux;
 use super::color;
 
 pub struct Piece {
-    pub offsets: [aux::Offset;4],
+    pub offsets: [aux::Coord;4],
     pub color: color::Color,
     pub coord: aux::Coord,
 }
 
 impl Piece {
-    fn preset(offsets: [aux::Offset;4], color: color::Color) -> Piece {
+    fn preset(offsets: [aux::Coord;4], color: color::Color) -> Piece {
         Piece {
             offsets: offsets,
             color: color,
@@ -26,6 +26,10 @@ impl Piece {
         }
     }
 
+    pub fn sink(&mut self) {
+        self.coord.1 -= 1;
+    }
+
     pub fn rotate(&mut self) {
         
     }
@@ -33,10 +37,9 @@ impl Piece {
 
 pub mod template {
     use super::Piece;
-    use super::aux::Offset as O;
     use super::aux::Coord as C;
     use super::color::named::*;
 
-    pub const SQUARE: Piece = Piece { offsets: [O(0,0), O(0,1), O(1,0), O(1, 1)], color: YELLOW, coord: C(0,0) };
-    pub const TEE:    Piece = Piece { offsets: [O(0,0), O(0,1), O(1,0), O(0,-1)], color: PURPLE, coord: C(0,0) };
+    pub const SQUARE: Piece = Piece { offsets: [C(0,0), C(0,1), C(1,0), C(1, 1)], color: YELLOW, coord: C(0,0) };
+    pub const TEE:    Piece = Piece { offsets: [C(0,0), C(0,1), C(1,0), C(0,-1)], color: PURPLE, coord: C(0,0) };
 }

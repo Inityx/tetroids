@@ -1,5 +1,15 @@
-#[derive(Debug, Copy, Clone)]
-pub struct Offset(pub i8, pub i8);
+use std::ops;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Coord(pub usize, pub usize);
+pub struct Coord(pub i8, pub i8);
+
+impl ops::Add for Coord {
+    type Output = Coord;
+
+    fn add(self, rhs: Coord) -> Coord {
+        Coord(
+            self.0 + rhs.0,
+            self.1 + rhs.1
+        )
+    }
+}

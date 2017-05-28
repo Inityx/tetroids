@@ -26,7 +26,22 @@ impl Game {
         self.board.print();
     }
 
-    pub fn tick(&mut self) {
+    fn can_sink_piece(&mut self) -> bool {
+        if let Some(ref cursor) = self.cursor {
+            cursor.offsets.iter().cloned()
+                .map( |offset| offset + cursor.coord )
+                .all( |location|
+                    self.board.get(
+                        location.0 as usize,
+                        location.1 as usize
+                    ).is_none()
+                )
+        } else {
+            false
+        }
+    }
+
+    pub fn play(&mut self) {
         
     }
 }
