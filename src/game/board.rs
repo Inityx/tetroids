@@ -6,7 +6,9 @@ use super::aux::Coord;
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
-pub const BOARD_BORDER: &str = "+--------------------+";
+const BOARD_TOP: &str    = "╭────────────────────╮";
+const BOARD_BOTTOM: &str = "╰────────────────────╯";
+
 pub const INSERTION_POINT: Coord = Coord(
     (BOARD_WIDTH as i8) / 2 - 1,
     (BOARD_HEIGHT as i8) - 1
@@ -52,19 +54,19 @@ impl Board {
     }
 
     pub fn print(&self) {
-        println!("{}", BOARD_BORDER);
+        println!("{}", BOARD_TOP);
 
         for row in self.data.iter().rev() {
             let row_string = row.iter().map( |square|
                 match square {
-                    &Some(_) => "##",
+                    &Some(_) => "▓▓",
                     &None => "  "
                 }
             ).collect::<String>();
 
-            println!("|{}|", row_string);
+            println!("│{}│", row_string);
         }
 
-        println!("{}", BOARD_BORDER);
+        println!("{}", BOARD_BOTTOM);
     }
 }
