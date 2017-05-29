@@ -51,7 +51,7 @@ impl Game {
             match direction { Down => -1, _ => 0 }
         );
         
-        return cursor.offsets.iter()
+        cursor.offsets.iter()
             .map( |offset| offset + cursor.coord + displacement )
             .all( |location|
                 location.0 >= 0 &&
