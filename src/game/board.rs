@@ -49,8 +49,24 @@ impl Board {
     }
     
     pub fn clear_lines(&mut self) -> u8 {
-        // clear full lines and return number of lines cleared
-        0
+        let mut board = self.data;
+        let mut found = 0;
+        
+        // Collapse full lines
+        for index in 0..board.len() {
+            if board[index].iter().all( |item| item.is_some() ) {
+                found += 1;
+            } else if found > 0 {
+                board[index - found] = board[index];
+            }
+        }
+        
+        // Fill in top with None
+        for index in (board.len() - found)..board.len() {
+            board[index] = [None::<BoardSquare>; BOARD_WIDTH];
+        }
+        
+        found as u8
     }
 
     pub fn print(&self) {
