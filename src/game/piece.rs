@@ -28,6 +28,10 @@ impl Piece {
         }
     }
 
+    pub fn real_locations(&self) -> [Coord;4] {
+        self.offsets.iter().map( |offset| offset + self.coord ).collect::<[Coord;4]>()
+    }
+
     pub fn offsets_when_moved(&self, movement: Movement) -> [Coord;4] {
         match movement {
             MoveLeft | MoveRight | MoveDown => {
@@ -46,6 +50,7 @@ impl Piece {
         }
     }
     
+
     pub fn do_move(&mut self, movement: Movement) {
         match movement {
             MoveLeft | MoveRight | MoveDown => {

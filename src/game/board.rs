@@ -69,18 +69,30 @@ impl Board {
         found as u8
     }
 
-    pub fn print(&self) {
+    pub fn print(&self, cursor_option: Option<&Piece>) {
         println!("{}", BOARD_TOP);
 
-        for row in self.data.iter().rev() {
-            let row_string = row.iter().map( |square|
-                match square {
-                    &Some(_) => "▓▓",
-                    &None => "  "
-                }
-            ).collect::<String>();
+        let cursor_locations = if let Some(cursor) = cursor_option {
+            Some(cursor.real_locations())
+        } else {
+            None
+        };
+        
+        for (row_index, row) in self.data.iter().enumerate().rev() {
+            let row_string = row.iter().enumerate().map( |(col_index, square)| {
+                let current_loc = Coord(col_index as i8, row_index as i8);
+
+                let cursor_on = if let Some(locations) = cursor_locations {
+                    locations.iter().any( |location| location == current_loc)
+                } else {
+                    false
+                };
+                
+                if cursor_on || square.is_some() { "▓▓" } else { "  " }
+            }).collect::<String>();
 
             println!("│{}│", row_string);
+            
         }
 
         println!("{}", BOARD_BOTTOM);

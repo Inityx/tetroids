@@ -44,7 +44,7 @@ impl Game {
         };
         
         println!("\n  Score: {}\n  Cursor: {:?}\n", self.score, cursor);
-        self.board.print();
+        self.board.print(self.cursor.as_ref());
     }
     
     fn can_move_cursor(&mut self, movement: Movement) -> bool {

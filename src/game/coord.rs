@@ -1,4 +1,5 @@
 use std::ops;
+use std::cmp;
 use std::iter;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -45,6 +46,12 @@ impl iter::FromIterator<Coord> for [Coord;4] {
     }
 }
 
+impl<'a> cmp::PartialEq<Coord> for &'a Coord {
+    fn eq(&self, rhs: &Coord) -> bool {
+        self.0 == rhs.0 && self.1 == rhs.1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Coord as C;
@@ -63,6 +70,14 @@ mod tests {
         assert_eq!(coord1, coord2);
     }
     
+    #[test]
+    fn equality_ref() {
+        let coord1 = C(4,5);
+        let coord2 = C(4,5);
+        let coord1_ref: &C = &coord1;
+        assert!(coord1_ref == coord2);
+    }
+
     #[test]
     fn add_plain() {
         let coord1 = C(1,2);
