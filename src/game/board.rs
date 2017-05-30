@@ -2,7 +2,7 @@
 
 use super::color::Color;
 use super::piece::Piece;
-use super::aux::Coord;
+use super::coord::Coord;
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;

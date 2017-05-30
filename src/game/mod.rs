@@ -1,23 +1,30 @@
 mod color;
 mod piece;
 mod board;
-mod aux;
+mod coord;
+
+use self::board::Board;
+use self::coord::Coord;
 
 use std::thread;
 use std::time;
 
+#[allow(dead_code)]
 #[derive(Debug, Copy, Clone)]
-enum Direction {
-    Left,
-    Right,
-    Down
+pub enum Movement {
+    MoveLeft,
+    MoveRight,
+    MoveDown,
+    
+    RotLeft,
+    RotRight,
 }
 
-use self::Direction::*;
+use self::Movement::*;
 
 pub struct Game {
     score: u32,
-    board: board::Board,
+    board: Board,
     cursor: Option<piece::Piece>,
 }
 
@@ -25,7 +32,7 @@ impl Game {
     pub fn new() -> Game {
         Game {
             score: 0,
-            board: board::Board::new(),
+            board: Board::new(),
             cursor: None,
         }
     }
@@ -33,26 +40,19 @@ impl Game {
     pub fn print(&self) {
         let cursor = match self.cursor {
             Some(ref cursor) => cursor.coord,
-            None => aux::Coord(0,0)
+            None => Coord(0,0)
         };
         
         println!("\n  Score: {}\n  Cursor: {:?}\n", self.score, cursor);
         self.board.print();
     }
     
-    fn can_move_cursor(&mut self, direction: Direction) -> bool {
-        let cursor = match self.cursor {
-            Some(ref cursor) => cursor,
-            None => return false
-        };
-        
-        let displacement = aux::Coord(
-            match direction { Left => -1, Right => 1, Down => 0 },
-            match direction { Down => -1, _ => 0 }
-        );
-        
-        cursor.offsets.iter()
-            .map( |offset| offset + cursor.coord + displacement )
+    fn can_move_cursor(&mut self, movement: Movement) -> bool {
+        self.cursor
+            .as_ref()
+            .unwrap()
+            .offsets_when_moved(movement)
+            .iter()
             .all( |location|
                 location.0 >= 0 &&
                 location.1 >= 0 &&
@@ -67,42 +67,44 @@ impl Game {
             )
     }
     
-    fn try_move_cursor(&mut self, direction: Direction) -> Result<(),()> {
-        if !self.can_move_cursor(direction) { return Err(()); }
+    pub fn try_move_cursor(&mut self, movement: Movement) -> Result<(),()> {
+        if !self.can_move_cursor(movement) { return Err(()); }
         
-        let cursor = self.cursor.as_mut().unwrap();
-        match direction {
-            Left =>  cursor.coord.0 -= 1,
-            Right => cursor.coord.0 += 1,
-            Down =>  cursor.coord.1 -= 1
-        }
+        self.cursor
+            .as_mut()
+            .unwrap()
+            .do_move(movement);
         
         Ok(())
     }
     
-    fn try_place_cursor(&mut self) -> Result<(),()> {
-        if let Some(ref cursor) = self.cursor {
-            self.board.place(cursor);
-        } else {
-            return Err(());
+    pub fn place_cursor(&mut self) {
+        self.board.place(self.cursor.as_ref().unwrap());
+        self.cursor = None;
+    }
+    
+    pub fn refill_cursor(&mut self) {
+        if self.cursor.is_some() {
+            panic!("Tried to refill cursor when it already has a piece.");
         }
         
-        self.cursor = None;
-        Ok(())
+        self.cursor = Some(
+            piece::template::random_at(
+                board::INSERTION_POINT
+            )
+        );
     }
     
     pub fn play(&mut self) {
         loop {
-            self.cursor = Some(
-                piece::template::random_at(board::INSERTION_POINT),
-            );
+            self.refill_cursor();
             loop {
                 self.print();
                 thread::sleep(time::Duration::from_millis(500));
                 
-                if self.try_move_cursor(Down).is_err() {
+                if self.try_move_cursor(MoveDown).is_err() {
                     println!("Unable to sink piece; placing...");
-                    self.try_place_cursor().unwrap();
+                    self.place_cursor();
                     break;
                 }
             }

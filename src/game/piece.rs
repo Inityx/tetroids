@@ -1,20 +1,25 @@
 #![allow(dead_code)]
 
-use super::aux;
+use super::coord;
 use super::color;
+use super::Movement;
+
+use self::Movement::*;
+use self::coord::Coord;
+use self::color::Color;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Rotation { OnBlock, BetweenBlocks }
 
 pub struct Piece {
-    pub offsets: [aux::Coord;4],
-    pub color: color::Color,
+    pub offsets: [Coord;4],
+    pub color: Color,
     rotation: Rotation,
-    pub coord: aux::Coord,
+    pub coord: Coord,
 }
 
 impl Piece {
-    pub fn from_preset(preset: &Piece, coord: aux::Coord) -> Piece {
+    pub fn from_preset(preset: &Piece, coord: Coord) -> Piece {
         Piece {
             offsets: preset.offsets.clone(),
             color: preset.color,
@@ -23,18 +28,43 @@ impl Piece {
         }
     }
 
-    pub fn sink(&mut self) {
-        self.coord.1 -= 1;
+    pub fn offsets_when_moved(&self, movement: Movement) -> [Coord;4] {
+        match movement {
+            MoveLeft | MoveRight | MoveDown => {
+                let displacement = Coord(
+                    match movement { MoveLeft => -1, MoveRight => 1, _ => 0 },
+                    match movement { MoveDown => -1, _ => 0 }
+                );
+                self.offsets
+                    .iter()
+                    .map( |offset| offset + self.coord + displacement )
+                    .collect::<[Coord;4]>()
+            },
+            RotRight | RotLeft => {
+                self.offsets.clone()
+            },
+        }
     }
-
-    pub fn rotate(&mut self) {
-        
+    
+    pub fn do_move(&mut self, movement: Movement) {
+        match movement {
+            MoveLeft | MoveRight | MoveDown => {
+                let displacement = Coord(
+                    match movement { MoveLeft => -1, MoveRight => 1, _ => 0 },
+                    match movement { MoveDown => -1, _ => 0 }
+                );
+                self.coord += displacement;
+            },
+            RotRight | RotLeft => {
+                
+            },
+        }
     }
 }
 
 pub mod template {
     use super::Piece;
-    use super::aux::Coord as C;
+    use super::Coord as C;
     use super::color::named::*;
     use super::Rotation::*;
 
