@@ -138,14 +138,6 @@ impl GUI {
         xlib::XCloseDisplay(self.display_ptr);
     }
     
-    fn client_message_is_delete(&self, message: xlib::XClientMessageEvent) -> bool {
-        if message.message_type == self.wm_protocols && message.format == 32 {
-            message.data.get_long(0) as xlib::Atom == self.wm_delete_window
-        } else {
-            false
-        }
-    }
-    
     fn game_try_move(game: &mut game::Game, key: Key) -> Result<(),()> {
         use game::Movement::*;
         let movement = match key {
@@ -159,6 +151,43 @@ impl GUI {
         game.try_move_cursor(movement)
     }
     
+    fn handle_client_message(&self, event: xlib::XEvent) {
+        let message: xlib::XClientMessageEvent = From::from(event);
+        if message.message_type == self.wm_protocols &&
+            message.format == 32 &&
+            message.data.get_long(0) as xlib::Atom == self.wm_delete_window
+        {
+            println!("Received delete window event, exiting...");
+            return;
+        }
+    }
+    
+    unsafe fn handle_generic_event(&mut self, event: xlib::XEvent, game: &mut game::Game) {
+        let mut cookie: xlib::XGenericEventCookie = From::from(event);
+        
+        let data_retrieved = xlib::XGetEventData(self.display_ptr, &mut cookie);
+        if data_retrieved == xlib::False {
+            panic!("Failed to retrieve xinput event data.");
+        }
+        
+        if cookie.evtype == xinput2::XI_KeyPress {
+            let event_data: &xinput2::XIDeviceEvent = mem::transmute(cookie.data);
+            if let Some(key) = Key::from(event_data.detail) {
+                let result = match key {
+                    Key::ArrowRight |
+                    Key::ArrowLeft |
+                    Key::ArrowDown |
+                    Key::NumPad0 => self::GUI::game_try_move(game, key),
+                    Key::ArrowUp => {
+                        game.place_cursor();
+                        Ok(())
+                    },
+                };
+                self.render(game);
+            }
+        }
+    }
+    
     #[allow(unused_variables)]
     pub unsafe fn play(&mut self, game: &mut game::Game) {
         xlib::XMapWindow(self.display_ptr, self.window);
@@ -169,40 +198,10 @@ impl GUI {
         loop {
             xlib::XNextEvent(self.display_ptr, &mut event);
             match event.get_type() {
-                xlib::ClientMessage => {
-                    let message: xlib::XClientMessageEvent = From::from(event);
-                    if self.client_message_is_delete(message) {
-                        println!("Received delete window event, exiting...");
-                        return;
-                    }
-                },
-                xlib::GenericEvent => {
-                    let mut cookie: xlib::XGenericEventCookie = From::from(event);
-                    
-                    let data_retrieved = xlib::XGetEventData(self.display_ptr, &mut cookie);
-                    if data_retrieved == xlib::False {
-                        panic!("Failed to retrieve xinput event data.");
-                    }
-                    
-                    if cookie.evtype == xinput2::XI_KeyPress {
-                        let event_data: &xinput2::XIDeviceEvent = mem::transmute(cookie.data);
-                        if let Some(key) = Key::from(event_data.detail) {
-                            let result = match key {
-                                Key::ArrowRight |
-                                Key::ArrowLeft |
-                                Key::ArrowDown |
-                                Key::NumPad0 => self::GUI::game_try_move(game, key),
-                                Key::ArrowUp => {
-                                    game.place_cursor();
-                                    Ok(())
-                                },
-                            };
-                        }
-                    }
-                },
+                xlib::ClientMessage => self.handle_client_message(event),
+                xlib::GenericEvent  => self.handle_generic_event(event, game),
                 _ => (),
             }
-            self.render(game);
         }
     }
     

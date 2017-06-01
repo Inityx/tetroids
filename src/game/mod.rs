@@ -5,10 +5,6 @@ mod piece;
 mod board;
 mod coord;
 
-use self::board::Board;
-use self::coord::Coord;
-
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Movement {
     MoveLeft,
@@ -29,7 +25,7 @@ enum Selection {
 
 pub struct Game {
     score: u32,
-    board: Board,
+    board: board::Board,
     cursor: Option<piece::Piece>,
     projection: Option<piece::Piece>,
 }
@@ -38,7 +34,7 @@ impl Game {
     pub fn new() -> Game {
         Game {
             score: 0,
-            board: Board::new(),
+            board: board::Board::new(),
             cursor: None,
             projection: None,
         }
