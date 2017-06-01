@@ -6,4 +6,5 @@ authors = ["Andrew Tolvstad>"]
 [dependencies]
 
 [dependencies.x11]
+version = "2.14.0"
 features = ["xlib", "xinput"]
