@@ -3,5 +3,5 @@ name = "tetroids"
 version = "0.1.0"
 authors = ["Andrew Tolvstad>"]
 
-[dependencies]
-x11 = "*"
+[dependencies.x11]
+features = ["xlib"]
