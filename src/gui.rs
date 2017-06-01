@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+
 use ::x11::xlib;
 use ::std::ffi;
 use ::std::mem;
@@ -89,26 +90,30 @@ impl GUI {
     }
     
     pub unsafe fn play(&mut self, game: &mut Game) {
+        xlib::XMapWindow(self.display_ptr, self.window);
         let mut event: xlib::XEvent = mem::uninitialized();
         
         loop {
             xlib::XNextEvent(self.display_ptr, &mut event);
             
-            /*match event.get_type() {
-                 xlib::ClientMessage => {
+            match event.get_type() {
+                xlib::ClientMessage => {
                     let xclient: xlib::XClientMessageEvent = From::from(event);
-                    if xclient.message_type == xlib::Atom && xclient.format == 32 {
-                        
+                    if xclient.message_type == self.wm_protocols && xclient.format == 32 {
+                        if xclient.data.get_long(0) as xlib::Atom == self.wm_delete_window {
+                            return;
+                        }
                     }
                 },
-                _ => event_handler(&event),
-            } */
+                _ => (),
+            }
             self.render(game);
         }
     }
     
+    #[allow(unused_variables)]
     pub unsafe fn render(&mut self, game: &Game) {
-        
+
     }
 }
 
