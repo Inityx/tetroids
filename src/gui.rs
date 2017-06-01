@@ -89,6 +89,14 @@ impl GUI {
         xlib::XCloseDisplay(self.display_ptr);
     }
     
+    fn client_message_is_delete(&self, message: xlib::XClientMessageEvent) -> bool {
+        if message.message_type == self.wm_protocols && message.format == 32 {
+            message.data.get_long(0) as xlib::Atom == self.wm_delete_window
+        } else {
+            false
+        }
+    }
+    
     pub unsafe fn play(&mut self, game: &mut Game) {
         xlib::XMapWindow(self.display_ptr, self.window);
         let mut event: xlib::XEvent = mem::uninitialized();
@@ -98,12 +106,8 @@ impl GUI {
             
             match event.get_type() {
                 xlib::ClientMessage => {
-                    let xclient: xlib::XClientMessageEvent = From::from(event);
-                    if xclient.message_type == self.wm_protocols && xclient.format == 32 {
-                        if xclient.data.get_long(0) as xlib::Atom == self.wm_delete_window {
-                            return;
-                        }
-                    }
+                    let message: xlib::XClientMessageEvent = From::from(event);
+                    if self.client_message_is_delete(message) { return; }
                 },
                 _ => (),
             }
