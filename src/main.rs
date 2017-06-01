@@ -4,6 +4,7 @@ mod game;
 mod gui;
 
 fn main() {
-    let mut g = game::Game::new();
-    g.play();
+    let mut game = game::Game::new();
+    let mut interface = unsafe { gui::GUI::new() };
+    unsafe { interface.play(&mut game); }
 }
