@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod color;
 mod piece;
 mod board;
@@ -9,7 +11,7 @@ use self::coord::Coord;
 use std::thread;
 use std::time;
 
-#[allow(dead_code)]
+
 #[derive(Debug, Copy, Clone)]
 pub enum Movement {
     MoveLeft,
