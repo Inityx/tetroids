@@ -66,7 +66,7 @@ impl GUI {
         xlib::XStoreName(
             display_ptr,
             window,
-            ffi::CString::new(WINDOW_TITLE).unwrap().as_ptr() as *mut os::raw::c_char,
+            ffi::CString::new(WINDOW_TITLE).unwrap().as_ptr(),
         );
         
         let protocols_set = xlib::XSetWMProtocols(
@@ -159,6 +159,7 @@ impl GUI {
         game.try_move_cursor(movement)
     }
     
+    #[allow(unused_variables)]
     pub unsafe fn play(&mut self, game: &mut game::Game) {
         xlib::XMapWindow(self.display_ptr, self.window);
         let mut event: xlib::XEvent = mem::uninitialized();
@@ -192,7 +193,7 @@ impl GUI {
                                 Key::ArrowDown |
                                 Key::NumPad0 => self::GUI::game_try_move(game, key),
                                 Key::ArrowUp => {
-                                    game.slam_cursor();
+                                    game.place_cursor();
                                     Ok(())
                                 },
                             };

@@ -11,6 +11,7 @@ use self::color::Color;
 #[derive(Debug, Copy, Clone)]
 pub enum Rotation { OnBlock, BetweenBlocks }
 
+#[derive(Clone)]
 pub struct Piece {
     pub offsets: [Coord;4],
     pub color: Color,

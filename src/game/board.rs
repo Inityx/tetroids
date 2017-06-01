@@ -6,8 +6,6 @@ use super::coord::Coord;
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
-const BOARD_TOP: &str    = "╭────────────────────╮";
-const BOARD_BOTTOM: &str = "╰────────────────────╯";
 
 pub const INSERTION_POINT: Coord = Coord(
     (BOARD_WIDTH as i8) / 2 - 1,
@@ -67,34 +65,5 @@ impl Board {
         }
         
         found as u8
-    }
-
-    pub fn print(&self, cursor_option: Option<&Piece>) {
-        println!("{}", BOARD_TOP);
-
-        let cursor_locations = if let Some(cursor) = cursor_option {
-            Some(cursor.real_locations())
-        } else {
-            None
-        };
-        
-        for (row_index, row) in self.data.iter().enumerate().rev() {
-            let row_string = row.iter().enumerate().map( |(col_index, square)| {
-                let current_loc = Coord(col_index as i8, row_index as i8);
-
-                let cursor_on = if let Some(locations) = cursor_locations {
-                    locations.iter().any( |location| location == current_loc)
-                } else {
-                    false
-                };
-                
-                if cursor_on || square.is_some() { "▓▓" } else { "  " }
-            }).collect::<String>();
-
-            println!("│{}│", row_string);
-            
-        }
-
-        println!("{}", BOARD_BOTTOM);
     }
 }

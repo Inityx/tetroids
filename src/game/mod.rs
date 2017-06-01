@@ -8,11 +8,8 @@ mod coord;
 use self::board::Board;
 use self::coord::Coord;
 
-use std::thread;
-use std::time;
 
-
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Movement {
     MoveLeft,
     MoveRight,
@@ -24,10 +21,17 @@ pub enum Movement {
 
 use self::Movement::*;
 
+#[derive(Debug)]
+enum Selection {
+    Cursor,
+    Projection,
+}
+
 pub struct Game {
     score: u32,
     board: Board,
     cursor: Option<piece::Piece>,
+    projection: Option<piece::Piece>,
 }
 
 impl Game {
@@ -36,27 +40,21 @@ impl Game {
             score: 0,
             board: Board::new(),
             cursor: None,
+            projection: None,
         }
     }
 
-    pub fn print(&self) {
-        let cursor = match self.cursor {
-            Some(ref cursor) => cursor.coord,
-            None => Coord(0,0)
+    fn can_move_piece(&mut self, movement: Movement, selection: Selection) -> bool {
+        let piece = match selection {
+            Selection::Cursor     => self.cursor.as_ref(),
+            Selection::Projection => self.projection.as_ref(),
         };
         
-        println!("\n  Score: {}\n  Cursor: {:?}\n", self.score, cursor);
-        self.board.print(self.cursor.as_ref());
-    }
-    
-    fn can_move_cursor(&mut self, movement: Movement) -> bool {
-        if self.cursor.is_none() {
-            panic!("Game tried to evaluate move on a nonexistent cursor.");
+        if piece.is_none() {
+            panic!("Tried to evaluate move for nonexistent {:?}.", selection);
         }
-        
-        self.cursor
-            .as_ref()
-            .unwrap()
+
+        piece.unwrap()
             .offsets_when_moved(movement)
             .iter()
             .all( |location|
@@ -74,29 +72,25 @@ impl Game {
     }
     
     pub fn try_move_cursor(&mut self, movement: Movement) -> Result<(),()> {
-        if !self.can_move_cursor(movement) { return Err(()); }
-        
-        self.cursor
-            .as_mut()
-            .unwrap()
-            .do_move(movement);
-        
+        if !self.can_move_piece(movement, Selection::Cursor) { return Err(()); }
+
+        self.cursor.as_mut().unwrap().do_move(movement);
+        if movement != MoveDown { self.project_cursor(); }
+
         Ok(())
     }
     
-    pub fn slam_cursor(&mut self) {
-        loop {
-            if self.try_move_cursor(MoveDown).is_err() {
-                break;
-            }
+    pub fn project_cursor(&mut self) {
+        self.projection = self.cursor.clone();
+        while self.can_move_piece(MoveDown, Selection::Projection) {
+            self.projection.as_mut().unwrap().do_move(MoveDown);
         }
-        
-        self.place_cursor()
     }
-    
+
     pub fn place_cursor(&mut self) {
-        self.board.place(self.cursor.as_ref().unwrap());
+        self.board.place(self.projection.as_ref().unwrap());
         self.cursor = None;
+        self.projection = None;
     }
     
     pub fn refill_cursor(&mut self) {
@@ -109,21 +103,7 @@ impl Game {
                 board::INSERTION_POINT
             )
         );
-    }
-    
-    pub fn play(&mut self) {
-        loop {
-            self.refill_cursor();
-            loop {
-                self.print();
-                thread::sleep(time::Duration::from_millis(500));
-                
-                if self.try_move_cursor(MoveDown).is_err() {
-                    println!("Unable to sink piece; placing...");
-                    self.place_cursor();
-                    break;
-                }
-            }
-        }
+
+        self.project_cursor();
     }
 }
