@@ -50,6 +50,10 @@ impl Game {
     }
     
     fn can_move_cursor(&mut self, movement: Movement) -> bool {
+        if self.cursor.is_none() {
+            panic!("Game tried to evaluate move on a nonexistent cursor.");
+        }
+        
         self.cursor
             .as_ref()
             .unwrap()
@@ -78,6 +82,16 @@ impl Game {
             .do_move(movement);
         
         Ok(())
+    }
+    
+    pub fn slam_cursor(&mut self) {
+        loop {
+            if self.try_move_cursor(MoveDown).is_err() {
+                break;
+            }
+        }
+        
+        self.place_cursor()
     }
     
     pub fn place_cursor(&mut self) {
