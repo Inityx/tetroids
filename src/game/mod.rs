@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod color;
+pub mod color;
 mod piece;
 mod board;
 mod coord;

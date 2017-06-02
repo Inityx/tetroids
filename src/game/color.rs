@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 #[derive(Debug, Copy, Clone)]
-pub struct Color(u8, u8, u8);
+pub struct Color(pub u8, pub u8, pub u8);
 
 pub mod named {
     use super::Color;

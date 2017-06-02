@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod xcolor;
+
 use ::x11::{xlib, xinput2};
 use ::std::ffi;
 use ::std::mem;
@@ -38,6 +40,11 @@ impl Key {
 pub struct GUI {
     display_ptr: *mut xlib::Display,
     window: xlib::Window,
+    gfx_context: xlib::GC,
+    
+    width: os::raw::c_uint,
+    height: os::raw::c_uint,
+    
     wm_delete_window: xlib::Atom,
     wm_protocols: xlib::Atom,
 }
@@ -52,7 +59,7 @@ impl GUI {
         let root       = xlib::XRootWindow   (display_ptr, screen_num);
         
         let mut attributes: xlib::XSetWindowAttributes = mem::zeroed();
-        attributes.background_pixel = xlib::XBlackPixel(display_ptr, screen_num);
+        attributes.background_pixel = xlib::XWhitePixel(display_ptr, screen_num);
         
         let window = xlib::XCreateWindow(
             display_ptr, root, 0, 0,
@@ -124,9 +131,20 @@ impl GUI {
         let window = self::GUI::initialize_window(display_ptr, wm_delete_window);
         self::GUI::select_events(display_ptr, window);
 
+        let gfx_context = xlib::XCreateGC(
+            display_ptr,
+            window,
+            0u64, // Fixme
+            &mut mem::zeroed::<xlib::XGCValues>(),
+        );
+        
         GUI {
             display_ptr: display_ptr,
             window: window,
+            gfx_context: gfx_context,
+            
+            width: WINDOW_WIDTH,
+            height: WINDOW_HEIGHT,
             
             wm_delete_window: wm_delete_window,
             wm_protocols: wm_protocols,
@@ -151,18 +169,22 @@ impl GUI {
         game.try_move_cursor(movement)
     }
     
-    fn handle_client_message(&self, event: xlib::XEvent) {
+    fn handle_client_message(&self, event: xlib::XEvent) -> bool {
         let message: xlib::XClientMessageEvent = From::from(event);
-        if message.message_type == self.wm_protocols &&
-            message.format == 32 &&
-            message.data.get_long(0) as xlib::Atom == self.wm_delete_window
-        {
-            println!("Received delete window event, exiting...");
-            return;
-        }
+        message.message_type != self.wm_protocols ||
+            message.format != 32 ||
+            message.data.get_long(0) as xlib::Atom != self.wm_delete_window
     }
     
-    unsafe fn handle_generic_event(&mut self, event: xlib::XEvent, game: &mut game::Game) {
+    unsafe fn handle_configure_notify(&mut self, event: xlib::XEvent) -> bool {
+        let configure_event: xlib::XConfigureEvent = From::from(event);
+        
+        self.width  = configure_event.width  as os::raw::c_uint;
+        self.height = configure_event.height as os::raw::c_uint;
+        true
+    }
+    
+    unsafe fn handle_generic_event(&mut self, event: xlib::XEvent, game: &mut game::Game) -> bool {
         let mut cookie: xlib::XGenericEventCookie = From::from(event);
         
         let data_retrieved = xlib::XGetEventData(self.display_ptr, &mut cookie);
@@ -186,28 +208,38 @@ impl GUI {
                 self.render(game);
             }
         }
+        
+        true
     }
     
-    #[allow(unused_variables)]
     pub unsafe fn play(&mut self, game: &mut game::Game) {
         xlib::XMapWindow(self.display_ptr, self.window);
         let mut event: xlib::XEvent = mem::uninitialized();
         
         game.refill_cursor();
         
-        loop {
+        self.render(game);
+        let mut running = true;
+        while running {
             xlib::XNextEvent(self.display_ptr, &mut event);
-            match event.get_type() {
-                xlib::ClientMessage => self.handle_client_message(event),
-                xlib::GenericEvent  => self.handle_generic_event(event, game),
-                _ => (),
-            }
+            running = match event.get_type() {
+                xlib::ClientMessage   => self.handle_client_message(event),
+                xlib::ConfigureNotify => self.handle_configure_notify(event),
+                xlib::GenericEvent    => self.handle_generic_event(event, game),
+                _ => true,
+            };
         }
     }
     
-    #[allow(unused_variables)]
     pub unsafe fn render(&mut self, game: &game::Game) {
-
+        xlib::XClearWindow(self.display_ptr, self.window);
+        xlib::XFillRectangle(
+            self.display_ptr,
+            self.window,
+            self.gfx_context,
+            10, 20,
+            30, 40,
+        );
     }
 }
 
