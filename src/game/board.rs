@@ -2,15 +2,11 @@
 
 use super::color::Color;
 use super::piece::Piece;
-use super::coord::Coord;
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
 
-pub const INSERTION_POINT: Coord = Coord(
-    (BOARD_WIDTH as i8) / 2 - 1,
-    (BOARD_HEIGHT as i8) - 1
-);
+pub const INSERTION_POINT: i8 = BOARD_HEIGHT as i8 - 1;
 
 #[derive(Debug, Copy, Clone)]
 pub struct BoardSquare(Color);
@@ -47,7 +43,7 @@ impl Board {
     }
     
     pub fn clear_lines(&mut self) -> u8 {
-        let mut board = self.data;
+        let mut board = &mut self.data;
         let mut found = 0;
         
         // Collapse full lines
@@ -65,5 +61,49 @@ impl Board {
         }
         
         found as u8
+    }
+    
+    pub fn iter_with_index<'a>(&'a self) -> IterWithIndex<'a> {
+        IterWithIndex::over(&self)
+    }
+}
+
+pub struct IterWithIndex<'a> {
+    x: usize,
+    y: usize,
+    board: &'a Board,
+}
+
+impl<'a> IterWithIndex<'a> {
+    fn over(board: &'a Board) -> IterWithIndex<'a> {
+        IterWithIndex {
+            x: 0,
+            y: 0,
+            board: board,
+        }
+    }
+}
+
+impl<'a> Iterator for IterWithIndex<'a> {
+    type Item = (usize, usize, Option<BoardSquare>);
+    
+    fn next(&mut self) -> Option<(usize, usize, Option<BoardSquare>)> {
+        if self.y >= BOARD_HEIGHT { return None; }
+        
+        let retval = Some(
+            (
+                self.x,
+                self.y,
+                self.board.get(self.x, self.y)
+            )
+        );
+        
+        if self.x < BOARD_WIDTH-1 {
+            self.x += 1
+        } else {
+            self.x = 0;
+            self.y += 1
+        }
+        retval
     }
 }

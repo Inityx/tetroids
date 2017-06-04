@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+mod input;
 mod xcolor;
 
 use ::x11::{xlib, xinput2};
@@ -7,34 +8,23 @@ use ::std::ffi;
 use ::std::mem;
 use ::std::ptr;
 use ::std::os;
+use ::std::time;
+use ::std::thread;
+use ::std::sync;
 
 use game;
+use self::input::Key;
 
-const WINDOW_WIDTH: os::raw::c_uint = 1280;
-const WINDOW_HEIGHT: os::raw::c_uint = 720;
+const WINDOW_PADDING: i32 = 24;
+const WINDOW_WIDTH: os::raw::c_uint = 120 + 2*WINDOW_PADDING as u32;
+const WINDOW_HEIGHT: os::raw::c_uint = 240 + 2*WINDOW_PADDING as u32;
 const WINDOW_TITLE: &str = "Tetroids";
-const WINDOW_EVENTS: &[i32] = &[xinput2::XI_KeyPress];
+const INITIAL_TICK_MS: u64 = 1000;
 
-enum Key {
-    ArrowRight = 114,
-    ArrowLeft  = 113,
-    ArrowUp    = 111,
-    ArrowDown  = 116,
-    NumPad0    =  90,
-}
-
-impl Key {
-    fn from(other: i32) -> Option<Self> {
-        use self::Key::*;
-        match other {
-            114 => Some(ArrowRight),
-            113 => Some(ArrowLeft),
-            111 => Some(ArrowUp),
-            116 => Some(ArrowDown),
-            90  => Some(NumPad0),
-            _ => None,
-        }
-    }
+#[derive(Copy, Clone)]
+enum DurationOrQuit {
+    Dur(time::Duration),
+    Quit,
 }
 
 pub struct GUI {
@@ -87,31 +77,6 @@ impl GUI {
         window
     }
     
-    unsafe fn select_events(
-        display_ptr: *mut xlib::_XDisplay,
-        window: xlib::Window,
-    ) {
-        let mut mask: [os::raw::c_uchar;1] = [0];
-        
-        for &event in WINDOW_EVENTS {
-            xinput2::XISetMask(&mut mask, event);
-        }
-        
-        let mut input_event_mask = xinput2::XIEventMask {
-            deviceid: xinput2::XIAllMasterDevices,
-            mask_len: mask.len() as i32,
-            mask: mask.as_mut_ptr()
-        };
-        let events_selected = xinput2::XISelectEvents(
-            display_ptr, window,
-            &mut input_event_mask,
-            1
-        );
-        if events_selected as u8 != xlib::Success {
-            panic!("Failed to select events: {:?}", events_selected);
-        }
-    }
-    
     pub unsafe fn new() -> GUI {
         let display_ptr = xlib::XOpenDisplay(ptr::null());
         if display_ptr.is_null() { panic!("Failed to open XDisplay"); }
@@ -129,7 +94,7 @@ impl GUI {
         if wm_delete_window == 0 || wm_protocols == 0 { panic!("Failed to load Xlib Atoms."); }
         
         let window = self::GUI::initialize_window(display_ptr, wm_delete_window);
-        self::GUI::select_events(display_ptr, window);
+        self::input::select_events(display_ptr, window);
 
         let gfx_context = xlib::XCreateGC(
             display_ptr,
@@ -163,7 +128,7 @@ impl GUI {
             Key::ArrowRight => MoveRight,
             Key::ArrowDown => MoveDown,
             Key::NumPad0 => RotRight,
-            Key::ArrowUp => return Err(()),
+            Key::ArrowUp => unreachable!(),
         };
         
         game.try_move_cursor(movement)
@@ -176,15 +141,19 @@ impl GUI {
             message.data.get_long(0) as xlib::Atom != self.wm_delete_window
     }
     
-    unsafe fn handle_configure_notify(&mut self, event: xlib::XEvent) -> bool {
+    fn handle_configure_notify(&mut self, event: xlib::XEvent) -> bool {
         let configure_event: xlib::XConfigureEvent = From::from(event);
         
         self.width  = configure_event.width  as os::raw::c_uint;
         self.height = configure_event.height as os::raw::c_uint;
+        println!("Resizing to {}x{}.", self.width, self.height);
         true
     }
     
-    unsafe fn handle_generic_event(&mut self, event: xlib::XEvent, game: &mut game::Game) -> bool {
+    unsafe fn handle_generic_event(
+        &mut self, event: xlib::XEvent,
+        game: &mut game::Game
+    ) -> bool {
         let mut cookie: xlib::XGenericEventCookie = From::from(event);
         
         let data_retrieved = xlib::XGetEventData(self.display_ptr, &mut cookie);
@@ -205,11 +174,47 @@ impl GUI {
                         Ok(())
                     },
                 };
+                
+                if game.get_cursor().is_none() {
+                    game.refill_cursor();
+                
+                }
                 self.render(game);
+                
+                if game.evaluate_score() {
+                    thread::sleep(time::Duration::from_millis(300));
+                    game.project_cursor();
+                    self.render(game);
+                }
             }
         }
         
         true
+    }
+    
+    fn start_timing_thread(
+        &self, tick: sync::Arc<sync::Mutex<DurationOrQuit>>
+    ) -> thread::JoinHandle<()> {
+        let thread_display_ptr = self.display_ptr.clone() as usize;
+        let thread_window = self.window.clone();
+        
+        thread::spawn(move || {
+            let mut event: xlib::XKeyPressedEvent = unsafe { mem::uninitialized() };
+            // configure event
+            
+            while let DurationOrQuit::Dur(sleep_time) = *tick.lock().unwrap() {
+                thread::sleep(sleep_time);
+                unsafe {
+                    xlib::XSendEvent(
+                        thread_display_ptr as *mut xlib::_XDisplay,
+                        thread_window,
+                        0,
+                        0,
+                        (&mut event as *mut xlib::XKeyEvent) as *mut xlib::XEvent,
+                    );
+                }
+            }
+        })
     }
     
     pub unsafe fn play(&mut self, game: &mut game::Game) {
@@ -217,8 +222,18 @@ impl GUI {
         let mut event: xlib::XEvent = mem::uninitialized();
         
         game.refill_cursor();
-        
         self.render(game);
+        
+        let tick = sync::Arc::new(
+            sync::Mutex::new(
+                DurationOrQuit::Dur(
+                    time::Duration::from_millis(INITIAL_TICK_MS)
+                )
+            )
+        );
+        
+        // let timing_thread = self.start_timing_thread(tick.clone());
+        
         let mut running = true;
         while running {
             xlib::XNextEvent(self.display_ptr, &mut event);
@@ -226,20 +241,73 @@ impl GUI {
                 xlib::ClientMessage   => self.handle_client_message(event),
                 xlib::ConfigureNotify => self.handle_configure_notify(event),
                 xlib::GenericEvent    => self.handle_generic_event(event, game),
-                _ => true,
+                _ => {
+                    println!("Received unhandled event '{}'", event.get_type());
+                    true
+                },
             };
+            
+            if let DurationOrQuit::Dur(mut value) = *tick.lock().unwrap() {
+                value -= time::Duration::from_millis(10);
+            }
         }
+        
+        //timing_thread.join().unwrap();
     }
     
     pub unsafe fn render(&mut self, game: &game::Game) {
         xlib::XClearWindow(self.display_ptr, self.window);
-        xlib::XFillRectangle(
+        // draw border
+        xlib::XDrawRectangle(
             self.display_ptr,
             self.window,
             self.gfx_context,
-            10, 20,
-            30, 40,
+            WINDOW_PADDING/2, WINDOW_PADDING/2,
+            (120 + WINDOW_PADDING) as u32,
+            (240 + WINDOW_PADDING) as u32,
         );
+        // draw board
+        println!("Rendering Board");
+        for (x_index, y_index, square) in game.board_iter_with_index() {
+            if let Some(square) = square {
+                xlib::XFillRectangle(
+                    self.display_ptr,
+                    self.window,
+                    self.gfx_context,
+                         12*x_index as i32  + WINDOW_PADDING + 1,
+                    228-(12*y_index as i32) + WINDOW_PADDING + 1,
+                    10, 10,
+                );
+            }
+        }
+        // draw cursor and projection
+        if let Some(ref cursor) = game.get_cursor() {
+            println!("Rendering Piece");
+            for coord in cursor.real_locations().iter() {
+                xlib::XFillRectangle(
+                    self.display_ptr,
+                    self.window,
+                    self.gfx_context,
+                         12*coord.0 as i32  + WINDOW_PADDING + 1,
+                    228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
+                    10, 10,
+                );
+            }
+        }
+        // draw projection
+        if let Some(ref projection) = game.get_projection() {
+            println!("Rendering Projection");
+            for coord in projection.real_locations().iter() {
+                xlib::XFillRectangle(
+                    self.display_ptr,
+                    self.window,
+                    self.gfx_context,
+                         12*coord.0 as i32  + WINDOW_PADDING + 1,
+                    228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
+                    10, 10,
+                );
+            }
+        }
     }
 }
 

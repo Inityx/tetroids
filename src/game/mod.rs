@@ -24,10 +24,11 @@ enum Selection {
 }
 
 pub struct Game {
-    score: u32,
+    pub score: u32,
     board: board::Board,
     cursor: Option<piece::Piece>,
     projection: Option<piece::Piece>,
+    prev_cursor_x: usize,
 }
 
 impl Game {
@@ -37,6 +38,7 @@ impl Game {
             board: board::Board::new(),
             cursor: None,
             projection: None,
+            prev_cursor_x: 0,
         }
     }
 
@@ -68,7 +70,15 @@ impl Game {
     }
     
     pub fn try_move_cursor(&mut self, movement: Movement) -> Result<(),()> {
-        if !self.can_move_piece(movement, Selection::Cursor) { return Err(()); }
+        if !self.can_move_piece(movement, Selection::Cursor) {
+            return match movement {
+                MoveDown => {
+                    self.place_cursor();
+                    Ok(())
+                },
+                _ => Err(())
+            };
+        }
 
         self.cursor.as_mut().unwrap().do_move(movement);
         if movement != MoveDown { self.project_cursor(); }
@@ -85,6 +95,7 @@ impl Game {
 
     pub fn place_cursor(&mut self) {
         self.board.place(self.projection.as_ref().unwrap());
+        self.prev_cursor_x = self.cursor.as_ref().unwrap().coord.0 as usize;
         self.cursor = None;
         self.projection = None;
     }
@@ -96,10 +107,32 @@ impl Game {
         
         self.cursor = Some(
             piece::template::random_at(
-                board::INSERTION_POINT
+                coord::Coord(self.prev_cursor_x as i8, board::INSERTION_POINT)
             )
         );
 
         self.project_cursor();
+    }
+    
+    pub fn evaluate_score(&mut self) -> bool {
+        let add = self.board.clear_lines();
+        if add > 0 {
+            self.score += add as u32;
+            true
+        } else {
+            false
+        }
+    }
+    
+    pub fn board_iter_with_index(&self) -> board::IterWithIndex {
+        self.board.iter_with_index()
+    }
+    
+    pub fn get_cursor(&self) -> Option<&piece::Piece> {
+        self.cursor.as_ref()
+    }
+    
+    pub fn get_projection(&self) -> Option<&piece::Piece> {
+        self.projection.as_ref()
     }
 }
