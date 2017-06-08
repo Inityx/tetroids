@@ -1,4 +1,5 @@
 extern crate x11;
+extern crate rand;
 
 mod game;
 mod gui;

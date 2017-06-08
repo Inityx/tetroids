@@ -19,7 +19,7 @@ pub struct Piece {
 impl Piece {
     pub fn from_preset(preset: &Piece, coord: Coord) -> Piece {
         Piece {
-            offsets: preset.offsets.clone(),
+            offsets: preset.offsets,
             color: preset.color,
             rotation: preset.rotation,
             coord: coord,
@@ -91,25 +91,62 @@ impl Piece {
 }
 
 pub mod template {
+    use ::rand;
+    use self::rand::Rng;
     use super::Piece;
     use super::Coord as C;
     use super::color::named::*;
 
-    pub const SQUARE: Piece = Piece {
+    pub const O: Piece = Piece {
         offsets: [C(0,0), C(0,1), C(1,0), C(1, 1)],
         color: YELLOW,
         coord: C(0,0),
         rotation: false,
     };
-    pub const TEE: Piece = Piece {
-        offsets: [C(-1,0), C(0,0), C(1,0), C(0,-1)],
+    pub const T: Piece = Piece {
+        offsets: [C(-1,0), C(0,0), C(1,0), C(0,1)],
         color: PURPLE,
         coord: C(0,0),
         rotation: true,
     };
-
+    pub const L: Piece = Piece {
+        offsets: [C(0,2), C(0,1), C(0,0), C(1,0)],
+        color: ORANGE,
+        coord: C(0,0),
+        rotation: true,
+    };
+    pub const J: Piece = Piece {
+        offsets: [C(0,2), C(0,1), C(0,0), C(-1,0)],
+        color: BLUE,
+        coord: C(0,0),
+        rotation: true,
+    };
+    pub const S: Piece = Piece {
+        offsets: [C(-1,0), C(0,0), C(0,1), C(1,1)],
+        color: GREEN,
+        coord: C(0,0),
+        rotation: true,
+    };
+    pub const Z: Piece = Piece {
+        offsets: [C(-1,1), C(0,1), C(0,0), C(1,0)],
+        color: RED,
+        coord: C(0,0),
+        rotation: true,
+    };
+    pub const I: Piece = Piece {
+        offsets: [C(-1,0), C(0,0), C(1,0), C(2,0)],
+        color: CYAN,
+        coord: C(0,0),
+        rotation: true,
+    };
+    
+    const PIECES: [&'static Piece;7] = [&O, &T, &L, &J, &S, &Z, &I];
+    
     pub fn random_at(coord: C) -> Piece {
-        Piece::from_preset(&TEE, coord)
+        Piece::from_preset(
+            rand::thread_rng().choose(&PIECES).unwrap(),
+            coord
+        )
     }
 }
 
@@ -124,7 +161,7 @@ mod tests {
     
     #[test]
     fn real_locations() {
-        let piece = Piece::from_preset(&template::SQUARE, ORIGIN);
+        let piece = Piece::from_preset(&template::O, ORIGIN);
         let locations = piece.real_locations();
         assert_eq!(
             [C(4,5), C(4,6), C(5,5), C(5,6)],
@@ -134,7 +171,7 @@ mod tests {
     
     #[test]
     fn when_translated() {
-        let piece = Piece::from_preset(&template::SQUARE, ORIGIN);
+        let piece = Piece::from_preset(&template::O, ORIGIN);
         assert_eq!(
             [C(3,5), C(3,6), C(4,5), C(4, 6)],
             piece.real_locations_when_moved(MoveLeft)
@@ -143,43 +180,43 @@ mod tests {
     
     #[test]
     fn when_rotated() {
-        let piece = Piece::from_preset(&template::TEE, ORIGIN);
+        let piece = Piece::from_preset(&template::T, ORIGIN);
         assert_eq!(
-            [C(4,4), C(4,5), C(4,6), C(5, 5)],
+            [C(4,4), C(4,5), C(4,6), C(3, 5)],
             piece.real_locations_when_moved(RotLeft)
         );
         assert_eq!(
-            [C(4,6), C(4,5), C(4,4), C(3, 5)],
+            [C(4,6), C(4,5), C(4,4), C(5, 5)],
             piece.real_locations_when_moved(RotRight)
         );
     }
     
     #[test]
     fn do_translate() {
-        let mut piece = Piece::from_preset(&template::SQUARE, ORIGIN);
+        let mut piece = Piece::from_preset(&template::O, ORIGIN);
         piece.do_move(MoveLeft);
-        assert_eq!(template::SQUARE.offsets, piece.offsets);
+        assert_eq!(template::O.offsets, piece.offsets);
         assert_eq!(C(3,5), piece.coord);
     }
     
     #[test]
     fn do_rotate() {
         
-        let mut piece_left = Piece::from_preset(&template::TEE, ORIGIN);
-        let mut piece_right = Piece::from_preset(&template::TEE, ORIGIN);
+        let mut piece_left = Piece::from_preset(&template::T, ORIGIN);
+        let mut piece_right = Piece::from_preset(&template::T, ORIGIN);
         
         piece_left.do_move(RotLeft);
         piece_right.do_move(RotRight);
         
         assert_eq!(ORIGIN, piece_left.coord);
         assert_eq!(
-            [C(0,-1), C(0,0), C(0,1), C(1, 0)],
+            [C(0,-1), C(0,0), C(0,1), C(-1, 0)],
             piece_left.offsets
         );
         
         assert_eq!(ORIGIN, piece_right.coord);
         assert_eq!(
-            [C(0,1), C(0,0), C(0,-1), C(-1, 0)],
+            [C(0,1), C(0,0), C(0,-1), C(1, 0)],
             piece_right.offsets
         );
     }
