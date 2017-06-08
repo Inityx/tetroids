@@ -53,7 +53,7 @@ impl Game {
         }
 
         piece.unwrap()
-            .offsets_when_moved(movement)
+            .real_locations_when_moved(movement)
             .iter()
             .all( |location|
                 location.0 >= 0 &&

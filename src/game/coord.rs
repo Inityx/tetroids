@@ -1,9 +1,21 @@
 use std::ops;
 use std::cmp;
 use std::iter;
+use std::fmt;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Coord(pub i8, pub i8);
+
+impl fmt::Debug for Coord {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.0, self.1)
+    }
+}
+
+impl Coord {
+    pub fn turn_right(&self) -> Coord { Coord(   self.1, -1*self.0) }
+    pub fn turn_left(&self)  -> Coord { Coord(-1*self.1,    self.0) }
+}
 
 impl ops::Add for Coord {
     type Output = Coord;
@@ -67,6 +79,7 @@ mod tests {
     fn equality() {
         let coord1 = C(4,5);
         let coord2 = C(4,5);
+        assert!(coord1 == coord2);
         assert_eq!(coord1, coord2);
     }
     
@@ -76,6 +89,7 @@ mod tests {
         let coord2 = C(4,5);
         let coord1_ref: &C = &coord1;
         assert!(coord1_ref == coord2);
+        assert_eq!(coord1_ref, coord2);
     }
 
     #[test]
@@ -100,6 +114,13 @@ mod tests {
         let mut coord = C(1,2);
         coord += C(4,5);
         assert_eq!(C(5,7), coord);
+    }
+    
+    #[test]
+    fn turn() {
+        let coord = C(3,4);
+        assert_eq!(C(-4,3), coord.turn_left());
+        assert_eq!(C(4,-3), coord.turn_right());
     }
     
     #[test]
