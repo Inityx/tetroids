@@ -94,10 +94,8 @@ impl Game {
     }
 
     pub fn place_cursor(&mut self) {
-        self.board.place(self.projection.as_ref().unwrap());
-        self.prev_cursor_x = self.cursor.as_ref().unwrap().coord.0 as usize;
-        self.cursor = None;
-        self.projection = None;
+        self.board.place(self.projection.take().unwrap());
+        self.prev_cursor_x = self.cursor.take().unwrap().coord.0 as usize;
     }
     
     pub fn refill_cursor(&mut self) {

@@ -27,7 +27,10 @@ impl Piece {
     }
 
     pub fn real_locations(&self) -> [Coord;4] {
-        self.offsets.iter().map( |offset| offset + self.coord ).collect::<[Coord;4]>()
+        self.offsets
+            .iter()
+            .map( |offset| offset + self.coord )
+            .collect::<[Coord;4]>()
     }
 
     pub fn real_locations_when_moved(&self, movement: Movement) -> [Coord;4] {
@@ -66,9 +69,9 @@ impl Piece {
         match movement {
             MoveLeft | MoveRight | MoveDown => {
                 let displacement = match movement {
-                    MoveLeft => Coord(-1, 0),
-                    MoveRight => Coord(1, 0),
-                    MoveDown => Coord(0, -1),
+                    MoveLeft  => Coord(-1,  0),
+                    MoveRight => Coord( 1,  0),
+                    MoveDown  => Coord( 0, -1),
                     _ => unreachable!(),
                 };
                 self.coord += displacement;

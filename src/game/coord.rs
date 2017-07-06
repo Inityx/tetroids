@@ -3,7 +3,7 @@ use std::cmp;
 use std::iter;
 use std::fmt;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Default)]
 pub struct Coord(pub i8, pub i8);
 
 impl fmt::Debug for Coord {
@@ -48,7 +48,7 @@ impl ops::AddAssign<Coord> for Coord {
 
 impl iter::FromIterator<Coord> for [Coord;4] {
     fn from_iter<I: IntoIterator<Item=Coord>>(iter: I) -> Self {
-        let mut retval = [Coord(0,0);4];
+        let mut retval = [Default::default();4];
         
         for (ret, src) in retval.iter_mut().zip(iter) {
             *ret = src;

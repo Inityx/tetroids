@@ -30,7 +30,7 @@ impl Board {
         self.data[y][x]
     }
 
-    pub fn place(&mut self, piece: &Piece) {
+    pub fn place(&mut self, piece: Piece) {
         for square_offset in piece.offsets.iter() {
             let location = square_offset + piece.coord;
             
@@ -48,9 +48,12 @@ impl Board {
         
         // Collapse full lines
         for index in 0..board.len() {
-            if board[index].iter().all( |item| item.is_some() ) {
+            if board[index].iter().all(Option::is_some) {
                 found += 1;
-            } else if found > 0 {
+                continue;
+            }
+            
+            if found > 0 {
                 board[index - found] = board[index];
             }
         }
@@ -104,6 +107,7 @@ impl<'a> Iterator for IterWithIndex<'a> {
             self.x = 0;
             self.y += 1
         }
+        
         retval
     }
 }
