@@ -6,6 +6,6 @@ mod gui;
 
 fn main() {
     let mut game = game::Game::new();
-    let mut interface = unsafe { gui::GUI::new() };
-    unsafe { interface.play(&mut game); }
+    let mut interface = gui::GUI::new();
+    interface.play(&mut game);
 }

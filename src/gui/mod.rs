@@ -77,31 +77,37 @@ impl GUI {
         window
     }
     
-    pub unsafe fn new() -> GUI {
-        let display_ptr = xlib::XOpenDisplay(ptr::null());
+    pub fn new() -> GUI {
+        let display_ptr = unsafe { xlib::XOpenDisplay(ptr::null()) };
         if display_ptr.is_null() { panic!("Failed to open XDisplay"); }
         
-        let wm_delete_window = xlib::XInternAtom(
-            display_ptr,
-            ffi::CString::new("WM_DELETE_WINDOW").unwrap().as_ptr(),
-            xlib::False
-        );
-        let wm_protocols = xlib::XInternAtom(
-            display_ptr,
-            ffi::CString::new("WM_PROTOCOLS").unwrap().as_ptr(),
-            xlib::False
-        );
+        let wm_delete_window = unsafe {
+            xlib::XInternAtom(
+                display_ptr,
+                ffi::CString::new("WM_DELETE_WINDOW").unwrap().as_ptr(),
+                xlib::False
+            )
+        };
+        let wm_protocols = unsafe {
+            xlib::XInternAtom(
+                display_ptr,
+                ffi::CString::new("WM_PROTOCOLS").unwrap().as_ptr(),
+                xlib::False
+            )
+        };
         if wm_delete_window == 0 || wm_protocols == 0 { panic!("Failed to load Xlib Atoms."); }
         
-        let window = self::GUI::initialize_window(display_ptr, wm_delete_window);
-        self::input::select_events(display_ptr, window);
+        let window = unsafe { self::GUI::initialize_window(display_ptr, wm_delete_window) };
+        unsafe { self::input::select_events(display_ptr, window); }
 
-        let gfx_context = xlib::XCreateGC(
-            display_ptr,
-            window,
-            0u64, // Fixme
-            &mut mem::zeroed::<xlib::XGCValues>(),
-        );
+        let gfx_context = unsafe {
+            xlib::XCreateGC(
+                display_ptr,
+                window,
+                0u64, // Fixme
+                &mut mem::zeroed::<xlib::XGCValues>(),
+            )
+        };
         
         GUI {
             display_ptr: display_ptr,
@@ -116,9 +122,11 @@ impl GUI {
         }
     }
     
-    pub unsafe fn close(&mut self) {
-        xlib::XDestroyWindow(self.display_ptr, self.window);
-        xlib::XCloseDisplay(self.display_ptr);
+    pub fn close(&mut self) {
+        unsafe {
+            xlib::XDestroyWindow(self.display_ptr, self.window);
+            xlib::XCloseDisplay(self.display_ptr);
+        }
     }
     
     fn game_try_move(game: &mut game::Game, key: Key) -> Result<(),()> {
@@ -150,19 +158,19 @@ impl GUI {
         true
     }
     
-    unsafe fn handle_generic_event(
+    fn handle_generic_event(
         &mut self, event: xlib::XEvent,
         game: &mut game::Game
     ) -> bool {
         let mut cookie: xlib::XGenericEventCookie = From::from(event);
         
-        let data_retrieved = xlib::XGetEventData(self.display_ptr, &mut cookie);
+        let data_retrieved = unsafe { xlib::XGetEventData(self.display_ptr, &mut cookie) };
         if data_retrieved == xlib::False {
             panic!("Failed to retrieve xinput event data.");
         }
         
         if cookie.evtype == xinput2::XI_KeyPress {
-            let event_data: &xinput2::XIDeviceEvent = mem::transmute(cookie.data);
+            let event_data: &xinput2::XIDeviceEvent = unsafe { mem::transmute(cookie.data) };
             if let Some(key) = Key::from(event_data.detail) {
                 let result = match key {
                     Key::ArrowRight |
@@ -217,9 +225,9 @@ impl GUI {
         })
     }
     
-    pub unsafe fn play(&mut self, game: &mut game::Game) {
-        xlib::XMapWindow(self.display_ptr, self.window);
-        let mut event: xlib::XEvent = mem::uninitialized();
+    pub fn play(&mut self, game: &mut game::Game) {
+        unsafe { xlib::XMapWindow(self.display_ptr, self.window); }
+        let mut event: xlib::XEvent = unsafe { mem::uninitialized() };
         
         game.refill_cursor();
         self.render(game);
@@ -236,7 +244,7 @@ impl GUI {
         
         let mut running = true;
         while running {
-            xlib::XNextEvent(self.display_ptr, &mut event);
+            unsafe { xlib::XNextEvent(self.display_ptr, &mut event); }
             running = match event.get_type() {
                 xlib::ClientMessage   => self.handle_client_message(event),
                 xlib::ConfigureNotify => self.handle_configure_notify(event),
@@ -255,57 +263,66 @@ impl GUI {
         //timing_thread.join().unwrap();
     }
     
-    pub unsafe fn render(&mut self, game: &game::Game) {
-        xlib::XClearWindow(self.display_ptr, self.window);
-        // draw border
-        xlib::XDrawRectangle(
-            self.display_ptr,
-            self.window,
-            self.gfx_context,
-            WINDOW_PADDING/2, WINDOW_PADDING/2,
-            (120 + WINDOW_PADDING) as u32,
-            (240 + WINDOW_PADDING) as u32,
-        );
+    pub fn render(&mut self, game: &game::Game) {
+        unsafe {
+            xlib::XClearWindow(self.display_ptr, self.window);
+            // draw border
+            xlib::XDrawRectangle(
+                self.display_ptr,
+                self.window,
+                self.gfx_context,
+                WINDOW_PADDING/2, WINDOW_PADDING/2,
+                (120 + WINDOW_PADDING) as u32,
+                (240 + WINDOW_PADDING) as u32,
+            );
+        }
+        
         // draw board
         println!("Rendering Board");
         for (x_index, y_index, square) in game.board_iter_with_index() {
             if let Some(square) = square {
-                xlib::XFillRectangle(
-                    self.display_ptr,
-                    self.window,
-                    self.gfx_context,
-                         12*x_index as i32  + WINDOW_PADDING + 1,
-                    228-(12*y_index as i32) + WINDOW_PADDING + 1,
-                    10, 10,
-                );
+                unsafe {
+                    xlib::XFillRectangle(
+                        self.display_ptr,
+                        self.window,
+                        self.gfx_context,
+                             12*x_index as i32  + WINDOW_PADDING + 1,
+                        228-(12*y_index as i32) + WINDOW_PADDING + 1,
+                        10, 10,
+                    );
+                }
             }
         }
         // draw cursor and projection
         if let Some(ref cursor) = game.get_cursor() {
             println!("Rendering Piece");
             for coord in cursor.real_locations().iter() {
-                xlib::XFillRectangle(
-                    self.display_ptr,
-                    self.window,
-                    self.gfx_context,
-                         12*coord.0 as i32  + WINDOW_PADDING + 1,
-                    228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
-                    10, 10,
-                );
+                unsafe {
+                    xlib::XFillRectangle(
+                        self.display_ptr,
+                        self.window,
+                        self.gfx_context,
+                             12*coord.0 as i32  + WINDOW_PADDING + 1,
+                        228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
+                        10, 10,
+                    );
+                }
             }
         }
         // draw projection
         if let Some(ref projection) = game.get_projection() {
             println!("Rendering Projection");
             for coord in projection.real_locations().iter() {
-                xlib::XFillRectangle(
-                    self.display_ptr,
-                    self.window,
-                    self.gfx_context,
-                         12*coord.0 as i32  + WINDOW_PADDING + 1,
-                    228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
-                    10, 10,
-                );
+                unsafe {
+                    xlib::XFillRectangle(
+                        self.display_ptr,
+                        self.window,
+                        self.gfx_context,
+                             12*coord.0 as i32  + WINDOW_PADDING + 1,
+                        228-(12*coord.1 as i32) + WINDOW_PADDING + 1,
+                        10, 10,
+                    );
+                }
             }
         }
     }
@@ -313,6 +330,6 @@ impl GUI {
 
 impl Drop for GUI {
     fn drop(&mut self) {
-        unsafe { self.close(); }
+        self.close();
     }
 }
